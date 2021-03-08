@@ -1,3 +1,4 @@
+from collections import Counter
 from re import fullmatch
 import json
 
@@ -34,8 +35,7 @@ class Checks:
                     self.structure_errors[field] += 1
 
         print(f'Type and required field validation: {sum(self.structure_errors.values())} errors')
-        for k, v in self.structure_errors.items():
-            print(k, v)
+        print('\n'.join(f'{field}: {err_count}' for field, err_count in self.structure_errors.items()))
 
     def validate_format(self):
         for item in self.data:
@@ -49,10 +49,16 @@ class Checks:
             if k in ('stop_name', 'stop_type', 'a_time'):
                 print(k, v)
 
+    def bus_line_info(self):
+        lines = Counter(b["bus_id"] for b in self.data)
+        print('Line names and number of stops:')
+        print('\n'.join(f'bus_id: {line}, stops: {stops}' for line, stops in lines.items()))
+
+
 def main():
     # The string containing the data in JSON format is passed to standard input.
     data = json.loads(input())
-    Checks(data).validate_format()
+    Checks(data).bus_line_info()
 
 if __name__ == '__main__':
     main()
