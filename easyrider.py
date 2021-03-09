@@ -97,20 +97,42 @@ class Checks:
             stops.setdefault(item['bus_id'], [])
             stops.get(item['bus_id']).append(item['stop_name'])
 
-        for i in itertools.combinations(stops.values(), 2):
-            transfer = (set(i[0]).intersection(i[1]))
+        for item in itertools.combinations(stops.values(), 2):
+            transfer = (set(item[0]).intersection(item[1]))
             for i in transfer:
                 transfers.add(i)
         return transfers
 
+    def time_check(self):
+        print('Arrival time test:')
+        stops = []
+        time_error = 0
+        for item in self.data:
+            stops.append((item['bus_id'], item['a_time'], item['stop_name']))
+
+        prev_time = ''
+        prev_bus = ''
+        for stop in stops:
+            if prev_time != '' and stop[1] <= prev_time and prev_bus == stop[0]:
+                print(f'bus_id line {stop[0]}: wrong time on station {stop[2]}')
+                time_error += 1
+                prev_bus *= 2
+                prev_time = ''
+
+            if time_error == 0 and stop[0] != prev_bus:
+                prev_bus = stop[0]
+            if prev_bus == stop[0]:
+                prev_time = stop[1]
+
+        if time_error == 0:
+            print('OK')
 
 
 def main():
     # The string containing the data in JSON format is passed to standard input.
     data = json.loads(input())
     check = Checks(data)
-    if check.bus_start_stop_check():
-        check.bus_stops_count()
+    check.time_check()
 
 
 if __name__ == '__main__':
