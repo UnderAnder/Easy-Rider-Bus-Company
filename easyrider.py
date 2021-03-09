@@ -1,12 +1,14 @@
+import itertools
+import json
 from collections import Counter
 from re import fullmatch
-import json
+
 
 class Checks:
     data_structure = {
         'bus_id': {'type': int, 'required': True},
         'stop_id': {'type': int, 'required': True},
-        'stop_name': {'type': str, 'required': True, 'format': '^[A-Z][A-Za-z\s]+(Road|Avenue|Boulevard|Street)$'},
+        'stop_name': {'type': str, 'required': True, 'format': '^[A-Z][A-Za-z]+(Road|Avenue|Boulevard|Street)$'},
         'next_stop': {'type': int, 'required': True},
         'stop_type': {'type': str, 'required': False, 'format': '[SOF]?'},
         'a_time': {'type': str, 'required': True, 'format': '[0-2][0-9]:[0-5][0-9]'}
@@ -14,8 +16,8 @@ class Checks:
 
     def __init__(self, data):
         self.data = data
-        self.structure_errors = {key:0 for i in self.data for key in i}
-        self.format_errors = {key:0 for i in self.data for key in i}
+        self.structure_errors = {key: 0 for i in self.data for key in i}
+        self.format_errors = {key: 0 for i in self.data for key in i}
 
     def validate_structure(self):
         for item in self.data:
@@ -50,15 +52,66 @@ class Checks:
                 print(k, v)
 
     def bus_line_info(self):
-        lines = Counter(b["bus_id"] for b in self.data)
+        lines = Counter(b['bus_id'] for b in self.data)
         print('Line names and number of stops:')
         print('\n'.join(f'bus_id: {line}, stops: {stops}' for line, stops in lines.items()))
+        return lines
+
+    def bus_start_stop_check(self):
+        stops = {}
+        for item in self.data:
+            stops.setdefault(item['bus_id'], [])
+            stops.get(item['bus_id']).append(item['stop_type'])
+        for bus, stop in stops.items():
+            if 'S' not in stop or 'F' not in stop:
+                print(f'There is no start or end stop for the line: {bus}.')
+                return False
+        return True
+
+    def bus_stops_count(self):
+        stops = {}
+        starts = set()
+        ends = set()
+        for item in self.data:
+            stops.setdefault(item['stop_type'], [])
+            stops.get(item['stop_type']).append(item['stop_name'])
+
+        for stop_type, stop_name in stops.items():
+            if stop_type == 'S':
+                for i in stop_name:
+                    starts.add(i)
+            if stop_type == 'F':
+                for i in stop_name:
+                    ends.add(i)
+
+        transfers = self.transfer_stops()
+
+        print(f'Start stops: {len(starts)} {sorted(list(starts))}')
+        print(f'Transfer stops: {len(transfers)} {sorted(list(transfers))}')
+        print(f'Finish stops: {len(ends)} {sorted(list(ends))}')
+
+    def transfer_stops(self):
+        stops = {}
+        transfers = set()
+        for item in self.data:
+            stops.setdefault(item['bus_id'], [])
+            stops.get(item['bus_id']).append(item['stop_name'])
+
+        for i in itertools.combinations(stops.values(), 2):
+            transfer = (set(i[0]).intersection(i[1]))
+            for i in transfer:
+                transfers.add(i)
+        return transfers
+
 
 
 def main():
     # The string containing the data in JSON format is passed to standard input.
     data = json.loads(input())
-    Checks(data).bus_line_info()
+    check = Checks(data)
+    if check.bus_start_stop_check():
+        check.bus_stops_count()
+
 
 if __name__ == '__main__':
     main()
