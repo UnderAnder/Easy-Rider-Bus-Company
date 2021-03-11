@@ -3,7 +3,8 @@ import json
 from collections import Counter
 from re import fullmatch
 
-
+# A lot of dirty code, but there's no reason to rewrite it
+# This project just a bunch separate, poorly described puzzles
 class Checks:
     data_structure = {
         'bus_id': {'type': int, 'required': True},
@@ -42,6 +43,8 @@ class Checks:
     def validate_format(self):
         for item in self.data:
             for field, value in item.items():
+
+                # check format
                 format_pattern = self.data_structure.get(field).get('format')
                 if format_pattern and not fullmatch(str(format_pattern), str(value)):
                     self.format_errors[field] += 1
@@ -89,6 +92,7 @@ class Checks:
         print(f'Start stops: {len(starts)} {sorted(list(starts))}')
         print(f'Transfer stops: {len(transfers)} {sorted(list(transfers))}')
         print(f'Finish stops: {len(ends)} {sorted(list(ends))}')
+        return starts, transfers, ends
 
     def transfer_stops(self):
         stops = {}
@@ -113,26 +117,42 @@ class Checks:
         prev_time = ''
         prev_bus = ''
         for stop in stops:
-            if prev_time != '' and stop[1] <= prev_time and prev_bus == stop[0]:
-                print(f'bus_id line {stop[0]}: wrong time on station {stop[2]}')
+            bus_id = stop[0]
+            bus_time = stop[1]
+            stop_name = stop[2]
+
+            if prev_time != '' and bus_time <= prev_time and prev_bus == bus_id:
+                print(f'bus_id line {bus_id}: wrong time on station {stop_name}')
                 time_error += 1
+                # check for next bus_id
                 prev_bus *= 2
                 prev_time = ''
 
-            if time_error == 0 and stop[0] != prev_bus:
-                prev_bus = stop[0]
-            if prev_bus == stop[0]:
-                prev_time = stop[1]
+            if time_error == 0 and bus_id != prev_bus:
+                prev_bus = bus_id
+            if prev_bus == bus_id:
+                prev_time = bus_time
 
         if time_error == 0:
             print('OK')
+
+    def on_demand_check(self):
+        starts, transfers, ends = self.bus_stops_count()
+        on_demand_stops = {item['stop_name'] for item in self.data if item['stop_type'] == 'O'}
+        stops_with_errors = []
+
+        for i in starts, transfers, ends:
+            stops_with_errors.extend(list(on_demand_stops.intersection(i)))
+
+        print('On demand stops test:')
+        print(f'Wrong stop type: {sorted(list(set(stops_with_errors)))}' if stops_with_errors else 'OK')
 
 
 def main():
     # The string containing the data in JSON format is passed to standard input.
     data = json.loads(input())
     check = Checks(data)
-    check.time_check()
+    check.on_demand_check()
 
 
 if __name__ == '__main__':
